@@ -1,0 +1,38 @@
+name: 每日自动刷新看板
+on:
+  schedule:
+    - cron: '0 17 * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Shanghai
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装数据库连接库
+        run: pip install pymysql
+      - name: 生成 D93 现场巡查记录仪表盘
+        working-directory: 现场巡查仪表盘
+        run: python generate_dashboard.py
+      - name: 生成 D91 隐患排查整改仪表盘
+        working-directory: 隐患排查仪表盘
+        run: python generate_dashboard.py
+      - name: 提交并推送
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "数据无变化，无需提交"
+            exit 0
+          fi
+          git commit -m "每日自动刷新 $(date '+%Y-%m-%d %H:%M')"
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:main

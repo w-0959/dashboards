@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全公司隐患排查整改情况</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M18 33l10 10 18-20' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script>window.echarts || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"><\/script>');</script>
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --line:#e4e9f1;
+  --tx:#22304a; --tx2:#5d6f8a; --tx3:#8b98ad;
+  --ac:#2563eb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;line-height:1.5;padding:18px;min-height:100vh}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1120px;margin:0 auto}
+.head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:6px 2px 16px}
+.head h1{font-size:22px;font-weight:800;color:var(--tx);letter-spacing:.5px}
+.head .sub{color:var(--tx2);font-size:13px;margin-top:4px}
+.head .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{background:var(--panel);border:1px solid var(--line);color:var(--tx2);border-radius:999px;padding:5px 13px;font-size:12.5px}
+.pill b{color:var(--ac);font-weight:700}
+.grid{display:grid;grid-template-columns:260px 1fr 1fr;gap:12px}
+@media(max-width:960px){.grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(34,48,74,.04);display:flex;flex-direction:column}
+.panel h3{font-size:14px;font-weight:700;color:var(--tx);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel h3 .dot{width:8px;height:8px;border-radius:2px;background:var(--ac);display:inline-block}
+.chart{width:100%;flex:1;min-height:250px}
+/* KPI 卡 */
+.kpi-card{justify-content:center;align-items:center;text-align:center;gap:6px;cursor:default}
+.kpi-card .label{font-size:13px;color:var(--tx2);line-height:1.4}
+.kpi-card .value{font-size:64px;font-weight:800;color:var(--ac);line-height:1}
+.kpi-card .hint{font-size:11px;color:var(--tx3)}
+.kpi-card.month .value{color:var(--tx)}
+/* pie 图例说明 */
+.pie-legend{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.pie-legend .row{display:flex;justify-content:space-between;font-size:12px;color:var(--tx2);align-items:center}
+.pie-legend .row b{color:var(--tx);font-weight:600}
+.pie-legend .dot{width:10px;height:10px;border-radius:2px;margin-right:6px;display:inline-block}
+/* 明细 */
+.tbl{overflow-x:auto;margin-top:16px}
+table{width:100%;min-width:820px;border-collapse:collapse;table-layout:fixed;font-size:12.5px}
+thead th{text-align:left;color:var(--tx2);font-weight:600;border-bottom:1px solid var(--line);padding:8px;white-space:nowrap;background:var(--bg)}
+tbody td{border-bottom:1px solid var(--line);padding:8px;vertical-align:top;color:var(--tx)}
+tbody tr:hover{background:rgba(37,99,235,.04)}
+.lv{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600}
+.lv.major{background:rgba(220,38,38,.12);color:#b91c1c}
+.lv.big{background:rgba(249,115,22,.14);color:#c2410c}
+.lv.mid{background:rgba(202,138,4,.16);color:#92400e}
+.lv.low{background:rgba(22,163,74,.13);color:#15803d}
+.foot{color:var(--tx3);font-size:11.5px;text-align:center;margin-top:18px;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>上昼夜全公司隐患排查整改情况</h1>
+      <div class="sub">草料二维码「隐患排查和整改（安管）」· 每天自动更新前一天</div>
+    </div>
+    <div class="meta">
+      <div class="pill">数据日期：<b id="datelbl"></b></div>
+      <div class="pill">生成时间：<b id="gen"></b></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel kpi-card">
+      <div class="label">昨日排查隐患总数<br>（不含零点之后）</div>
+      <div class="value num" id="dayTotal">0</div>
+      <div class="hint">记录时间处于目标日期当天</div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>各单位排查隐患数量（昨日）</h3>
+      <div id="chUnit" class="chart"></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>隐患原因（昨日）</h3>
+      <div id="chReason" class="chart"></div>
+    </div>
+
+    <div class="panel kpi-card month">
+      <div class="label">本月排查隐患总数</div>
+      <div class="value num" id="monthTotal">0</div>
+      <div class="hint">本月 1 日至目标日期累计</div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>排查隐患趋势（本月）</h3>
+      <div id="chTrend" class="chart"></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>隐患分类（今年）</h3>
+      <div id="chCat" class="chart"></div>
+      <div class="pie-legend" id="catLegend"></div>
+    </div>
+  </div>
+
+  <div class="panel tbl">
+    <h3 style="margin-bottom:6px"><span class="dot"></span>昨日隐患明细（<span id="recCnt" class="num"></span> 条）</h3>
+    <table>
+      <colgroup>
+        <col style="width:10%"><col style="width:13%"><col style="width:13%"><col style="width:26%"><col style="width:10%"><col style="width:14%"><col style="width:14%">
+      </colgroup>
+      <thead>
+        <tr><th>时间</th><th>隐患级别</th><th>所在部门</th><th>隐患描述</th><th>隐患原因</th><th>责任人</th><th>整改情况</th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="foot">
+    数据来源：草料二维码「隐患排查和整改（安管）」数据库（只读）· 昨日=数据日期当天，本月=当月累计，今年=2026年累计
+  </div>
+</div>
+
+<script>
+const DATA = {"date": "2026-10-07", "gen_time": "2026-10-08 15:16", "day_total": 16, "month_total": 105, "year_total": 5883, "units": [{"name": "安全环保部", "value": 7}, {"name": "生产作业分公司", "value": 6}, {"name": "设备技术分公司", "value": 3}], "reasons": [{"name": "人的不安全行为", "value": 1}, {"name": "安全管理存在的缺陷或漏洞", "value": 3}, {"name": "环境的不安全因素", "value": 3}, {"name": "设备设施的不安全状态", "value": 9}], "trend_dates": ["10-01", "10-02", "10-03", "10-04", "10-05", "10-06", "10-07"], "trend_nums": [9, 22, 10, 16, 17, 15, 16], "year_cats": [{"name": "现场管理", "value": 2081}, {"name": "设备", "value": 1073}, {"name": "港口设施", "value": 733}, {"name": "相关方", "value": 716}, {"name": "三违行为", "value": 484}, {"name": "消防器材", "value": 281}, {"name": "环境保护", "value": 218}, {"name": "安全标志", "value": 191}, {"name": "其他", "value": 106}], "records": [{"time": "10:32", "reason": "环境的不安全因素", "category": "港口设施", "level": "一般事故隐患", "danger_dept": "生产作业分公司", "unit": "生产作业分公司", "name": "沈建洪", "desc": "集装箱堆场广角镜老化破损", "form": "现场检查", "rec_no": "L644206", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "10:35", "reason": "环境的不安全因素", "category": "消防器材", "level": "一般事故隐患", "danger_dept": "生产作业分公司", "unit": "生产作业分公司", "name": "沈建洪", "desc": "集装箱堆场灭火器防护罩老化破损", "form": "现场检查", "rec_no": "L644208", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "10:40", "reason": "环境的不安全因素", "category": "现场管理", "level": "一般事故隐患", "danger_dept": "集装箱分公司", "unit": "生产作业分公司", "name": "沈建洪", "desc": "集装箱未按规范要求堆放，高柜和普柜混堆。", "form": "现场检查", "rec_no": "L644212", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "10:54", "reason": "设备设施的不安全状态", "category": "设备", "level": "一般事故隐患", "danger_dept": "设备技术分公司", "unit": "生产作业分公司", "name": "沈建洪", "desc": "2号场桥电缆破损铜线裸露", "form": "现场检查", "rec_no": "L644222", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "13:47", "reason": "安全管理存在的缺陷或漏洞", "category": "现场管理", "level": "一般事故隐患", "danger_dept": "生产作业分公司", "unit": "安全环保部", "name": "耿亚东", "desc": "12号机处铁锹随意放置，横梁上积料未清干净", "form": "现场检查", "rec_no": "L644245", "fix_owner": "朱翔", "fix_status": "未整改"}, {"time": "13:48", "reason": "设备设施的不安全状态", "category": "港口设施", "level": "一般事故隐患", "danger_dept": "相关方", "unit": "生产作业分公司", "name": "沈建洪", "desc": "比亚迪1号仓库北四门掉落", "form": "现场检查", "rec_no": "L644246", "fix_owner": "藏广春", "fix_status": "未整改"}, {"time": "14:02", "reason": "设备设施的不安全状态", "category": "设备", "level": "一般事故隐患", "danger_dept": "设备技术分公司", "unit": "安全环保部", "name": "耿亚东", "desc": "10号机路测防爬器固定销轴向外突出", "form": "现场检查", "rec_no": "L644252", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "14:07", "reason": "设备设施的不安全状态", "category": "设备,现场管理", "level": "一般事故隐患", "danger_dept": "设备技术分公司", "unit": "安全环保部", "name": "耿亚东", "desc": "10号机海测防爬器电机连接销轴失效，电机往外突出", "form": "现场检查", "rec_no": "L644254", "fix_owner": "张业良", "fix_status": "未整改"}, {"time": "14:09", "reason": "安全管理存在的缺陷或漏洞", "category": "现场管理", "level": "一般事故隐患", "danger_dept": "生产作业分公司", "unit": "安全环保部", "name": "耿亚东", "desc": "1号泊位消防设施旁损坏推车随意放置", "form": "现场检查", "rec_no": "L644255", "fix_owner": "朱翔", "fix_status": "未整改"}, {"time": "14:11", "reason": "设备设施的不安全状态", "category": "设备", "level": "一般事故隐患", "danger_dept": "设备技术分公司", "unit": "安全环保部", "name": "耿亚东", "desc": "门机25号抓斗处焊接板脱焊", "form": "现场检查", "rec_no": "L644256", "fix_owner": "张业良", "fix_status": "未整改"}, {"time": "15:04", "reason": "安全管理存在的缺陷或漏洞", "category": "应急管理（救生圈等）", "level": "一般事故隐患", "danger_dept": "生产作业分公司", "unit": "安全环保部", "name": "耿亚东", "desc": "11号卸船机处救生圈缺少救生抛绳", "form": "现场检查", "rec_no": "L644268", "fix_owner": "朱翔", "fix_status": "未整改"}, {"time": "15:24", "reason": "设备设施的不安全状态", "category": "现场管理", "level": "一般事故隐患", "danger_dept": "设备技术分公司", "unit": "设备技术分公司", "name": "王惠国", "desc": "气瓶减震圈破损", "form": "现场检查", "rec_no": "L644271", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "15:54", "reason": "设备设施的不安全状态", "category": "设备", "level": "一般事故隐患", "danger_dept": "设备技术分公司", "unit": "设备技术分公司", "name": "王惠国", "desc": "12号机空压机防护罩坏", "form": "现场检查", "rec_no": "L644283", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "16:06", "reason": "设备设施的不安全状态", "category": "现场管理", "level": "一般事故隐患", "danger_dept": "生产作业分公司", "unit": "安全环保部", "name": "耿亚东", "desc": "T03二楼跑偏开关被料卡住无法正常旋转", "form": "现场检查", "rec_no": "L644291", "fix_owner": "朱翔", "fix_status": "未整改"}, {"time": "16:41", "reason": "设备设施的不安全状态", "category": "设备", "level": "一般事故隐患", "danger_dept": "设备技术分公司", "unit": "设备技术分公司", "name": "王惠国", "desc": "2号装船机刹车防护罩末安装", "form": "现场检查", "rec_no": "L644298", "fix_owner": "", "fix_status": "已整改闭环"}, {"time": "17:29", "reason": "人的不安全行为", "category": "现场管理", "level": "一般事故隐患", "danger_dept": "生产作业分公司", "unit": "生产作业分公司", "name": "沈建洪", "desc": "堆场集装箱门未关", "form": "现场检查", "rec_no": "L644317", "fix_owner": "", "fix_status": "已整改闭环"}], "unit_color": {"安全环保部": "#2563eb", "生产作业分公司": "#7c3aed", "设备技术分公司": "#16a34a"}};
+document.getElementById("datelbl").textContent = DATA.date;
+document.getElementById("gen").textContent = DATA.gen_time;
+document.getElementById("dayTotal").textContent = DATA.day_total;
+document.getElementById("monthTotal").textContent = DATA.month_total;
+document.getElementById("recCnt").textContent = DATA.records.length;
+
+const CAT_COLORS = ["#2563eb","#16a34a","#f59e0b","#7c3aed","#dc2626","#0d9488","#db2777","#64748b","#0891b2","#9333ea"];
+const REASON_COLORS = ["#ef4444","#f59e0b","#3b82f6","#8b5cf6"];
+const lvClass = l => (l||"").indexOf("重大")===0?"major":(l||"").indexOf("较大")===0?"big":(l||"").indexOf("一般")===0?"mid":"low";
+function shortLv(l){return (l||"").replace(/[（(].*[)）]/g,"")||"—";}
+
+/* 各单位排查隐患数量（昨日）bar */
+(function(){
+  const el=document.getElementById("chUnit"); if(!el) return;
+  const ch=echarts.init(el);
+  const rows=DATA.units.slice().reverse();
+  ch.setOption({
+    grid:{left:4,right:24,top:8,bottom:4,containLabel:true},
+    tooltip:{trigger:"axis",axisPointer:{type:"shadow"}},
+    xAxis:{type:"value",minInterval:1,splitLine:{lineStyle:{color:"rgba(34,48,74,.08)"}},axisLabel:{color:"#5d6f8a",fontSize:11}},
+    yAxis:{type:"category",data:rows.map(r=>r.name),axisLabel:{color:"#334155",fontSize:11.5,width:90,overflow:"truncate"},axisLine:{show:false},axisTick:{show:false}},
+    series:[{type:"bar",data:rows.map(r=>r.value),barMaxWidth:16,itemStyle:{color:p=>DATA.unit_color[rows[p.dataIndex].name]||"#2563eb",borderRadius:[0,3,3,0]},label:{show:true,position:"right",color:"#5d6f8a",fontSize:11}}]
+  });
+})();
+
+/* 隐患原因（昨日）pie */
+(function(){
+  const el=document.getElementById("chReason"); if(!el) return;
+  const ch=echarts.init(el);
+  ch.setOption({
+    color:REASON_COLORS,
+    tooltip:{trigger:"item",formatter:"{b}<br/>{c} 项 ({d}%)"},
+    series:[{type:"pie",radius:["40%","68%"],center:["50%","52%"],avoidLabelOverlap:true,
+      label:{color:"#334155",fontSize:11,formatter:"{b}"},
+      itemStyle:{borderRadius:4,borderColor:"#fff",borderWidth:1},
+      data:DATA.reasons.map(r=>({name:r.name,value:r.value}))}]
+  });
+})();
+
+/* 排查隐患趋势（本月）line */
+(function(){
+  const el=document.getElementById("chTrend"); if(!el) return;
+  const ch=echarts.init(el);
+  const last=DATA.trend_nums.length-1;
+  ch.setOption({
+    grid:{left:4,right:14,top:18,bottom:4,containLabel:true},
+    tooltip:{trigger:"axis"},
+    xAxis:{type:"category",boundaryGap:false,data:DATA.trend_dates,axisLabel:{color:"#5d6f8a",fontSize:10.5},axisLine:{lineStyle:{color:"#d0d7e2"}}},
+    yAxis:{type:"value",minInterval:1,splitLine:{lineStyle:{color:"rgba(34,48,74,.08)"}},axisLabel:{color:"#5d6f8a",fontSize:11}},
+    series:[{type:"line",smooth:true,symbol:"circle",symbolSize:5,
+      data:DATA.trend_nums,
+      lineStyle:{color:"#2563eb",width:2},
+      itemStyle:{color:p=>p.dataIndex===last?"#f97316":"#2563eb"},
+      areaStyle:{color:"rgba(37,99,235,.08)"},
+      label:{show:true,position:"top",color:"#5d6f8a",fontSize:10}}]
+  });
+})();
+
+/* 隐患分类（今年）pie + legend */
+(function(){
+  const el=document.getElementById("chCat"); if(!el) return;
+  const ch=echarts.init(el);
+  const cats=DATA.year_cats;
+  ch.setOption({
+    color:CAT_COLORS,
+    tooltip:{trigger:"item",formatter:"{b}<br/>{c} ({d}%)"},
+    series:[{type:"pie",radius:"62%",center:["50%","52%"],avoidLabelOverlap:true,
+      label:{show:false},emphasis:{label:{show:true,color:"#334155",fontSize:12}},
+      itemStyle:{borderRadius:4,borderColor:"#fff",borderWidth:1},
+      data:cats.map(r=>({name:r.name,value:r.value}))}]
+  });
+  const total=DATA.year_total;
+  document.getElementById("catLegend").innerHTML=cats.map((c,i)=>
+    `<div class="row"><span><span class="dot" style="background:${CAT_COLORS[i%CAT_COLORS.length]}"></span>${c.name}</span><b class="num">${c.value} (${(c.value/total*100).toFixed(1)}%)</b></div>`
+  ).join("");
+})();
+
+/* 昨日隐患明细 */
+const tb=document.getElementById("tbody");
+tb.innerHTML=DATA.records.map(r=>`<tr>
+  <td class="num">${r.time}</td>
+  <td><span class="lv ${lvClass(r.level)}">${shortLv(r.level)}</span></td>
+  <td>${r.unit||"—"}</td>
+  <td>${r.desc||"—"}</td>
+  <td>${r.reason||"—"}</td>
+  <td>${r.fix_owner||"—"}</td>
+  <td>${r.fix_status||"—"}</td>
+</tr>`).join("");
+
+window.addEventListener("resize",()=>{
+  ["chUnit","chReason","chTrend","chCat"].forEach(id=>{const e=document.getElementById(id);if(e&&e.__ec)e.__ec.resize();});
+});
+</script>
+</body>
+</html>

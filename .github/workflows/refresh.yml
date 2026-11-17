@@ -1,31 +1,65 @@
 name: 每日自动刷新看板
+
+# ============================================================
+# 用途：每天凌晨自动重新生成两张看板，并推送回本仓库由 Pages 发布
+#   1) 现场巡查记录仪表盘（D93）
+#   2) 隐患排查整改仪表盘（D91）
+#
+# 定时说明：GitHub 免费定时任务是"最低优先级"，可能延迟数小时甚至被跳过，
+# 所以这里设了 6 档兜底触发（均避开整点，整点最拥堵）：
+#   北京时间 01:07 / 02:07 / 03:07 / 04:07 / 05:07 / 06:07
+# 哪一档先真正跑起来就用哪一档的结果；数据无变化时脚本会自动跳过提交，不会产生多余记录。
+# ============================================================
 on:
   schedule:
-    - cron: '0 17 * * *'
-  workflow_dispatch: {}
+    - cron: '7 17 * * *'    # 北京 01:07
+    - cron: '7 18 * * *'    # 北京 02:07
+    - cron: '7 19 * * *'    # 北京 03:07
+    - cron: '7 20 * * *'    # 北京 04:07
+    - cron: '7 21 * * *'    # 北京 05:07
+    - cron: '7 22 * * *'    # 北京 06:07
+  workflow_dispatch: {}      # 允许在网页上手动点 Run workflow 立即执行一次
+
+# 同一时间只跑一个，避免多档触发同时推送导致冲突
+concurrency:
+  group: refresh-dashboards
+  cancel-in-progress: false
+
 permissions:
-  contents: write
+  contents: write            # 允许把生成的文件写回本仓库
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
     env:
-      TZ: Asia/Shanghai
+      TZ: Asia/Shanghai      # 关键：按北京时间计算"前一天"
     steps:
       - name: 拉取代码
         uses: actions/checkout@v4
+
       - name: 安装 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: 安装数据库连接库
         run: pip install pymysql
+
       - name: 生成 D93 现场巡查记录仪表盘
         working-directory: 现场巡查仪表盘
         run: python generate_dashboard.py
+
       - name: 生成 D91 隐患排查整改仪表盘
         working-directory: 隐患排查仪表盘
         run: python generate_dashboard.py
-      - name: 提交并推送
+
+      - name: 校验生成结果
+        run: |
+          test -f "现场巡查仪表盘/现场巡查记录仪表盘.html" || { echo "D93 未生成"; exit 1; }
+          test -f "隐患排查仪表盘/隐患排查整改仪表盘.html" || { echo "D91 未生成"; exit 1; }
+          echo "两张看板均已生成"
+
+      - name: 提交并推送到 GitHub Pages
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -34,5 +68,5 @@ jobs:
             echo "数据无变化，无需提交"
             exit 0
           fi
-          git commit -m "每日自动刷新 $(date '+%Y-%m-%d %H:%M')"
+          git commit -m "自动刷新 $(date '+%Y-%m-%d %H:%M')"
           git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:main

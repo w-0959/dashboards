@@ -55,9 +55,9 @@ jobs:
 
       - name: 校验生成结果
         run: |
-          test -f "现场巡查仪表盘/现场巡查记录仪表盘.html" || { echo "D93 未生成"; exit 1; }
-          test -f "隐患排查仪表盘/隐患排查整改仪表盘.html" || { echo "D91 未生成"; exit 1; }
-          echo "两张看板均已生成"
+          test -f "现场巡查记录仪表盘.html" || { echo "D93 未生成"; exit 1; }
+          test -f "隐患排查整改仪表盘.html" || { echo "D91 未生成"; exit 1; }
+          echo "两张看板均已生成（仓库根目录）"
 
       - name: 提交并推送到 GitHub Pages
         run: |
